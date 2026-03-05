@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 import tz.co.iseke.dto.JournalEntryResultDTO;
 import tz.co.iseke.entity.SavingsAccount;
@@ -47,6 +48,11 @@ public class AccountingResolver {
     @QueryMapping
     public TrialBalanceDTO trialBalance(@Argument LocalDate date) {
         return accountingService.getTrialBalance(date);
+    }
+
+    @QueryMapping
+    public List<SavingsProduct> savingsProducts() {
+        return savingsProductService.findAllActive();
     }
 
     @QueryMapping
@@ -118,5 +124,22 @@ public class AccountingResolver {
     @MutationMapping
     public JournalEntryResultDTO postJournalEntry(@Argument JournalEntryInput input) {
         return accountingService.postJournalEntry(input);
+    }
+
+    @SchemaMapping(typeName = "AccountGL", field = "balance")
+    public BigDecimal accountBalance(ChartOfAccounts account) {
+        return accountingService.getAccountBalance(account.getId(), LocalDate.now());
+    }
+
+    @SchemaMapping(typeName = "AccountGL", field = "debitBalance")
+    public BigDecimal accountDebitBalance(ChartOfAccounts account) {
+        BigDecimal balance = accountingService.getAccountBalance(account.getId(), LocalDate.now());
+        return balance != null && balance.compareTo(BigDecimal.ZERO) > 0 ? balance : BigDecimal.ZERO;
+    }
+
+    @SchemaMapping(typeName = "AccountGL", field = "creditBalance")
+    public BigDecimal accountCreditBalance(ChartOfAccounts account) {
+        BigDecimal balance = accountingService.getAccountBalance(account.getId(), LocalDate.now());
+        return balance != null && balance.compareTo(BigDecimal.ZERO) < 0 ? balance.negate() : BigDecimal.ZERO;
     }
 }

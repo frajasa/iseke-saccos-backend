@@ -99,6 +99,7 @@ type Mutation {
     # Member Mutations
     createMember(input: CreateMemberInput!): Member!
     updateMember(id: ID!, input: UpdateMemberInput!): Member!
+    activateMember(id: ID!): Member!
     deactivateMember(id: ID!): Member!
     registerProspect(input: CreateMemberInput!): Member!
     submitApplication(memberId: ID!): Member!
@@ -181,6 +182,10 @@ type Mutation {
     processPayrollBatch(employerId: ID!, period: String!): PayrollDeductionBatch!
     setupPayrollDeduction(memberId: ID!, employerId: ID!, deductionType: String!, savingsAccountId: ID, loanAccountId: ID, amount: Decimal!, description: String): PayrollDeduction!
     reviewEssRequest(requestId: ID!, status: String!, reviewNotes: String): EssServiceRequest!
+
+    # Utility Mutations
+    sendNotification(phoneNumber: String, email: String, message: String!, subject: String): Boolean!
+    updateAccountBalance(accountId: ID!, amount: Decimal!, isCredit: Boolean!): Boolean!
 }
 
 # Types
@@ -414,6 +419,9 @@ type AccountGL {
     isControlAccount: Boolean
     normalBalance: String
     status: ProductStatus
+    balance: Decimal
+    debitBalance: Decimal
+    creditBalance: Decimal
 }
 
 type LedgerEntry {

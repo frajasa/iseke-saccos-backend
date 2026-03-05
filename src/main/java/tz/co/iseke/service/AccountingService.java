@@ -41,6 +41,11 @@ public class AccountingService {
         return chartRepository.findByAccountCode(accountCode).orElse(null);
     }
 
+    public BigDecimal getAccountBalance(UUID accountId, LocalDate date) {
+        BigDecimal balance = ledgerRepository.getAccountBalance(accountId, date);
+        return balance != null ? balance : BigDecimal.ZERO;
+    }
+
     public List<GeneralLedger> getGeneralLedger(UUID accountId, LocalDate startDate, LocalDate endDate) {
         return ledgerRepository.findByAccountIdAndDateRange(accountId, startDate, endDate);
     }
