@@ -1,0 +1,1225 @@
+scalar Date
+scalar DateTime
+scalar Decimal
+
+type Query {
+    # Dashboard
+    dashboardStats: DashboardStats!
+
+    #User Queries
+    findAllUsers: [User!]!
+    findUserById(id: ID!): User
+
+    # Member Queries
+    member(id: ID!): Member
+    memberByNumber(memberNumber: String!): Member
+    members(page: Int, size: Int, status: MemberStatus): MemberPage!
+    searchMembers(searchTerm: String!, page: Int, size: Int): MemberPage!
+
+    # Savings Queries
+    savingsAccount(id: ID!): SavingsAccount
+    savingsAccountByNumber(accountNumber: String!): SavingsAccount
+    memberSavingsAccounts(memberId: ID!): [SavingsAccount!]!
+    savingsProducts: [SavingsProduct!]!
+
+    # Loan Queries
+    loanAccounts(page: Int, size: Int, status: LoanStatus): LoanAccountPage!
+    loanAccount(id: ID!): LoanAccount
+    loanAccountByNumber(loanNumber: String!): LoanAccount
+    memberLoanAccounts(memberId: ID!): [LoanAccount!]!
+    loanProducts: [LoanProduct!]!
+    loanRepaymentSchedule(loanId: ID!, page: Int, size: Int): RepaymentSchedulePage!
+
+    # Transaction Queries
+    transaction(id: ID!): Transaction
+    memberTransactions(memberId: ID!, startDate: Date, endDate: Date): [Transaction!]!
+    accountTransactions(accountId: ID!, startDate: Date, endDate: Date): [Transaction!]!
+    loanTransactions(loanId: ID!): [Transaction!]!
+
+    # Branch Queries
+    branch(id: ID!): Branch
+    branches(status: BranchStatus): [Branch!]!
+
+    # Accounting Queries
+    chartOfAccounts: [AccountGL!]!
+    generalLedger(accountId: ID!, startDate: Date!, endDate: Date!): [LedgerEntry!]!
+    trialBalance(date: Date!): TrialBalance!
+    activeSavingsProducts: [SavingsProduct!]!
+    activeSavingsProductById(id: ID): SavingsProduct!
+
+    # Reports
+    portfolioSummary(branchId: ID, startDate: Date!, endDate: Date!): PortfolioSummary!
+    delinquencyReport(branchId: ID, date: Date!): DelinquencyReport!
+    financialStatements(date: Date!, branchId: ID): FinancialStatements!
+
+    # Audit
+    auditLogs(entityType: String, entityId: ID, userId: ID, startDate: DateTime, endDate: DateTime): [AuditLog!]!
+
+    # Cash Flow & Enhanced Reports
+    cashFlowStatement(startDate: Date!, endDate: Date!, branchId: ID): CashFlowStatement!
+    loanProvisionReport(date: Date, branchId: ID): LoanProvisionReport!
+    memberStatement(memberId: ID!, accountId: ID, startDate: Date!, endDate: Date!): MemberStatement!
+    dailyTransactionSummary(date: Date!, branchId: ID): DailyTransactionSummary!
+
+    # Payment Queries
+    paymentRequest(id: ID!): PaymentRequest
+    paymentRequests(provider: PaymentProvider, status: PaymentRequestStatus, page: Int, size: Int): PaymentRequestPage!
+    memberPaymentRequests(memberId: ID!, page: Int, size: Int): PaymentRequestPage!
+    availablePaymentProviders: [PaymentProvider!]!
+    paymentDashboard: PaymentDashboard!
+
+    # Approval Queries
+    pendingApprovals: [TransactionApproval!]!
+    transactionApproval(id: ID!): TransactionApproval
+
+    # ESS Queries (Member self-service)
+    essDashboard: EssDashboard!
+    essPayrollDeductions: [PayrollDeduction!]!
+    essServiceRequests: [EssServiceRequest!]!
+
+    # Credit Scoring & Dividends
+    creditScore(memberId: ID!): CreditScoreResult
+    dividendRuns: [DividendRun!]!
+
+    # ESS Admin Queries
+    employers: [Employer!]!
+    employer(id: ID!): Employer
+}
+
+type Mutation {
+    #User Mutations
+    createUser(input: CreateUserInput!): User!
+    updateUser(id: ID!, input: UpdateUserInput!): User!
+    deactivateUser(id: ID!): Boolean!
+    deleteUser(id: ID!): Boolean!
+    activateUser(id: ID!): Boolean!
+    resetPassword(id: ID!, newPassword: String!): Boolean!
+
+    # Member Mutations
+    createMember(input: CreateMemberInput!): Member!
+    updateMember(id: ID!, input: UpdateMemberInput!): Member!
+    deactivateMember(id: ID!): Member!
+    registerProspect(input: CreateMemberInput!): Member!
+    submitApplication(memberId: ID!): Member!
+    approveMembership(memberId: ID!): Member!
+
+    # Member Biometrics
+    updateMemberPhoto(memberId: ID!, photoPath: String!): Member!
+    updateMemberSignature(memberId: ID!, signaturePath: String!): Member!
+    updateMemberFingerprint(memberId: ID!, fingerprintPath: String!): Member!
+
+    # Savings Mutations
+    openSavingsAccount(input: CreateSavingsAccountInput!): SavingsAccount!
+    deposit(input: DepositInput!): Transaction!
+    withdraw(input: WithdrawInput!): Transaction!
+    closeSavingsAccount(id: ID!): SavingsAccount!
+
+    # Loan Mutations
+    applyForLoan(input: LoanApplicationInput!): LoanAccount!
+    approveLoan(id: ID!, approvedAmount: Decimal): LoanAccount!
+    disburseLoan(id: ID!, disbursementDate: Date): LoanAccount!
+    repayLoan(input: LoanRepaymentInput!): Transaction!
+    addGuarantor(input: AddGuarantorInput!): Guarantor!
+    addCollateral(input: AddCollateralInput!): Collateral!
+    writeOffLoan(loanId: ID!, reason: String!): LoanAccount!
+    refinanceLoan(loanId: ID!, newTermMonths: Int!, newInterestRate: Decimal!, reason: String!): LoanAccount!
+    generateMissingRepaymentSchedules: Int!
+
+    # Product Mutations
+    createSavingsProduct(input: CreateSavingsProductInput!): SavingsProduct!
+    updateSavingsProduct(id: ID!, input: UpdateSavingsProductInput!): SavingsProduct!
+    deactivateProduct(id: ID!): Boolean!
+    createLoanProduct(input: CreateLoanProductInput!): LoanProduct
+    updateLoanProduct(id: ID!, input: UpdateLoanProductInput!): LoanProduct
+
+    # Branch Mutations
+    createBranch(input: CreateBranchInput!): Branch!
+    updateBranch(id: ID!, input: UpdateBranchInput!): Branch!
+
+    # Authentication
+    login(username: String!, password: String!): AuthPayload!
+    changePassword(oldPassword: String!, newPassword: String!): Boolean!
+
+    # Transaction Reversal
+    reverseTransaction(transactionId: ID!, reason: String!): Transaction!
+
+    # Inter-Branch Transfer
+    interBranchTransfer(fromAccountId: ID!, toAccountId: ID!, amount: Decimal!, description: String): Transaction!
+
+    # Journal Entry
+    postJournalEntry(input: JournalEntryInput!): JournalEntryResult!
+
+    # Batch Processing
+    runEndOfDay: Boolean!
+    runInterestAccrual: Boolean!
+    runLoanProvisioning: Boolean!
+
+    # Payment Mutations
+    initiateMobileDeposit(input: MobileDepositInput!): PaymentRequest!
+    initiateMobileLoanRepayment(input: MobileLoanRepaymentInput!): PaymentRequest!
+    initiateMobileDisbursement(input: MobileDisbursementInput!): PaymentRequest!
+    checkPaymentStatus(paymentRequestId: ID!): PaymentRequest!
+    cancelPaymentRequest(paymentRequestId: ID!): PaymentRequest!
+
+    # Credit Scoring & Dividends
+    calculateCreditScore(memberId: ID!): CreditScoreResult!
+    calculateDividends(year: Int!, method: String!, rate: Decimal!): DividendRun!
+    postDividends(dividendRunId: ID!): DividendRun!
+
+    # Approval Mutations
+    approveTransaction(approvalId: ID!): TransactionApproval!
+    rejectTransaction(approvalId: ID!, reason: String!): TransactionApproval!
+
+    # ESS Member Mutations
+    essApplyForLoan(amount: Decimal!, termMonths: Int!, purpose: String, productId: ID): EssServiceRequest!
+    essRequestWithdrawal(accountId: ID!, amount: Decimal!, reason: String): EssServiceRequest!
+
+    # ESS Admin Mutations
+    createEmployer(employerCode: String!, employerName: String!, contactPerson: String, phoneNumber: String, email: String, address: String, tinNumber: String, payrollCutoffDay: Int): Employer!
+    processPayrollBatch(employerId: ID!, period: String!): PayrollDeductionBatch!
+    setupPayrollDeduction(memberId: ID!, employerId: ID!, deductionType: String!, savingsAccountId: ID, loanAccountId: ID, amount: Decimal!, description: String): PayrollDeduction!
+    reviewEssRequest(requestId: ID!, status: String!, reviewNotes: String): EssServiceRequest!
+}
+
+# Types
+type Member {
+    id: ID!
+    memberNumber: String!
+    firstName: String!
+    middleName: String
+    lastName: String!
+    fullName: String!
+    dateOfBirth: Date
+    gender: Gender!
+    nationalId: String
+    phoneNumber: String
+    email: String
+    address: String
+    occupation: String
+    employer: String
+    monthlyIncome: Decimal
+    maritalStatus: MaritalStatus
+    nextOfKinName: String
+    nextOfKinPhone: String
+    nextOfKinRelationship: String
+    membershipDate: Date
+    status: MemberStatus!
+    stage: MemberStage
+    photoPath: String
+    signaturePath: String
+    fingerprintPath: String
+    branch: Branch
+    savingsAccounts: [SavingsAccount!]!
+    loanAccounts: [LoanAccount!]!
+    createdAt: DateTime
+    updatedAt: DateTime
+}
+
+type SavingsAccount {
+    id: ID!
+    accountNumber: String!
+    member: Member!
+    product: SavingsProduct!
+    branch: Branch
+    openingDate: Date!
+    balance: Decimal!
+    availableBalance: Decimal!
+    accruedInterest: Decimal!
+    lastTransactionDate: Date
+    lastInterestDate: Date
+    status: AccountStatus!
+    maturityDate: Date
+    beneficiaryName: String
+    beneficiaryRelationship: String
+    createdAt: DateTime
+    updatedAt: DateTime
+}
+
+type SavingsProduct {
+    id: ID!
+    productCode: String!
+    productName: String!
+    productType: SavingsProductType!
+    description: String
+    interestRate: Decimal!
+    interestCalculationMethod: String
+    interestPaymentFrequency: String
+    minimumBalance: Decimal
+    maximumBalance: Decimal
+    minimumOpeningBalance: Decimal
+    withdrawalLimit: Int
+    withdrawalFee: Decimal
+    monthlyFee: Decimal
+    taxWithholdingRate: Decimal
+    dormancyPeriodDays: Int
+    allowsOverdraft: Boolean
+    status: ProductStatus!
+    createdAt: DateTime
+    updatedAt: DateTime
+}
+
+type LoanAccount {
+    id: ID!
+    loanNumber: String!
+    member: Member!
+    product: LoanProduct!
+    branch: Branch
+    applicationDate: Date!
+    approvalDate: Date
+    disbursementDate: Date
+    principalAmount: Decimal!
+    interestRate: Decimal!
+    termMonths: Int!
+    repaymentFrequency: String!
+    outstandingPrincipal: Decimal!
+    outstandingInterest: Decimal!
+    outstandingFees: Decimal!
+    outstandingPenalties: Decimal!
+    totalPaid: Decimal!
+    nextPaymentDate: Date
+    maturityDate: Date
+    status: LoanStatus!
+    loanOfficer: String
+    purpose: String
+    daysInArrears: Int!
+    writeOffReason: String
+    writeOffDate: Date
+    writtenOffBy: String
+    guarantors: [Guarantor!]!
+    collateral: [Collateral!]!
+    createdAt: DateTime
+    updatedAt: DateTime
+}
+
+type LoanProduct {
+    id: ID!
+    productCode: String!
+    productName: String!
+    description: String
+    interestRate: Decimal!
+    interestMethod: InterestMethod!
+    repaymentFrequency: String!
+    minimumAmount: Decimal!
+    maximumAmount: Decimal!
+    minimumTermMonths: Int!
+    maximumTermMonths: Int!
+    processingFeeRate: Decimal
+    processingFeeFixed: Decimal
+    insuranceFeeRate: Decimal
+    latePaymentPenaltyRate: Decimal
+    gracePeriodDays: Int!
+    requiresGuarantors: Boolean!
+    minimumGuarantors: Int!
+    requiresCollateral: Boolean!
+    collateralPercentage: Decimal
+    status: ProductStatus!
+    createdAt: DateTime
+    updatedAt: DateTime
+}
+
+type Transaction {
+    id: ID!
+    transactionNumber: String!
+    transactionDate: Date!
+    transactionTime: DateTime!
+    transactionType: TransactionType!
+    member: Member!
+    amount: Decimal!
+    balanceBefore: Decimal
+    balanceAfter: Decimal
+    description: String
+    referenceNumber: String
+    paymentMethod: PaymentMethod!
+    processedBy: String
+    branch: Branch
+    status: TransactionStatus!
+    reversalOfId: ID
+    reversedById: ID
+    reversalReason: String
+    createdAt: DateTime
+}
+
+type Guarantor {
+    id: ID!
+    loanAccount: LoanAccount!
+    guarantorMember: Member
+    guarantorName: String!
+    guarantorNationalId: String
+    guarantorPhone: String
+    guaranteedAmount: Decimal!
+    relationship: String
+    status: GuarantorStatus!
+    createdAt: DateTime
+}
+
+type Collateral {
+    id: ID!
+    loanAccount: LoanAccount!
+    collateralType: String!
+    description: String
+    estimatedValue: Decimal!
+    registrationNumber: String
+    location: String
+    status: CollateralStatus!
+    createdAt: DateTime
+}
+
+type RepaymentSchedule {
+    id: ID!
+    loan: LoanAccount
+    installmentNumber: Int!
+    dueDate: Date!
+    principalDue: Decimal!
+    interestDue: Decimal!
+    totalDue: Decimal!
+    principalPaid: Decimal!
+    interestPaid: Decimal!
+    feesPaid: Decimal!
+    penaltiesPaid: Decimal!
+    totalPaid: Decimal!
+    paymentDate: Date
+    status: ScheduleStatus!
+}
+
+type RepaymentSchedulePage {
+    content: [RepaymentSchedule!]!
+    totalElements: Int!
+    totalPages: Int!
+}
+
+type Branch {
+    id: ID!
+    branchCode: String!
+    branchName: String!
+    address: String
+    phoneNumber: String
+    email: String
+    managerName: String
+    openingDate: Date!
+    status: BranchStatus!
+    createdAt: DateTime
+    updatedAt: DateTime
+}
+
+type AccountGL {
+    id: ID!
+    accountCode: String!
+    accountName: String!
+    accountType: AccountType!
+    accountCategory: String
+    parentAccount: AccountGL
+    level: Int
+    isControlAccount: Boolean
+    normalBalance: String
+    status: ProductStatus
+}
+
+type LedgerEntry {
+    id: ID!
+    postingDate: Date!
+    account: AccountGL!
+    debitAmount: Decimal!
+    creditAmount: Decimal!
+    balance: Decimal
+    description: String
+    reference: String
+    branch: Branch
+    postedBy: String
+    createdAt: DateTime
+}
+
+type TrialBalance {
+    date: Date!
+    entries: [TrialBalanceEntry!]!
+    totalDebits: Decimal!
+    totalCredits: Decimal!
+}
+
+type TrialBalanceEntry {
+    account: AccountGL!
+    debitBalance: Decimal!
+    creditBalance: Decimal!
+}
+
+type PortfolioSummary {
+    totalLoans: Int!
+    totalDisbursed: Decimal!
+    totalOutstanding: Decimal!
+    totalPaid: Decimal!
+    activeLoans: Int!
+    delinquentLoans: Int!
+    averageLoanSize: Decimal!
+    portfolioAtRisk: Decimal!
+}
+
+type DelinquencyReport {
+    date: Date!
+    ranges: [DelinquencyRange!]!
+    totalOutstanding: Decimal!
+    totalAtRisk: Decimal!
+}
+
+type DelinquencyRange {
+    range: String!
+    numberOfLoans: Int!
+    outstandingAmount: Decimal!
+    percentage: Decimal!
+}
+
+type FinancialStatements {
+    date: Date!
+    balanceSheet: BalanceSheet!
+    incomeStatement: IncomeStatement!
+}
+
+type BalanceSheet {
+    assets: Decimal!
+    liabilities: Decimal!
+    equity: Decimal!
+    details: [BalanceSheetItem!]!
+}
+
+type BalanceSheetItem {
+    category: String!
+    amount: Decimal!
+    accounts: [AccountBalance!]!
+}
+
+type AccountBalance {
+    accountName: String!
+    amount: Decimal!
+}
+
+type IncomeStatement {
+    revenue: Decimal!
+    expenses: Decimal!
+    netIncome: Decimal!
+    details: [IncomeStatementItem!]!
+}
+
+type IncomeStatementItem {
+    category: String!
+    amount: Decimal!
+    accounts: [AccountBalance!]!
+}
+
+type MemberPage {
+    content: [Member!]!
+    totalElements: Int!
+    totalPages: Int!
+}
+
+type LoanAccountPage {
+    content: [LoanAccount!]!
+    totalElements: Int!
+    totalPages: Int!
+}
+
+type AuthPayload {
+    token: String!
+    user: User
+    forcePasswordChange: Boolean
+}
+
+type User {
+    id: ID!
+    username: String!
+    email: String!
+    firstName: String
+    middleName: String
+    lastName: String
+    fullName: String
+    phoneNumber: String
+    role: UserRole
+    isActive: Boolean
+    branch: Branch
+    passwordExpiresAt: DateTime
+    forcePasswordChange: Boolean
+    createdAt: DateTime
+    updatedAt: DateTime
+}
+
+# New Types for SACCOS Compliance
+type AuditLog {
+    id: ID!
+    user: User
+    action: String!
+    entityType: String
+    entityId: ID
+    oldValue: String
+    newValue: String
+    ipAddress: String
+    timestamp: DateTime!
+}
+
+type JournalEntryResult {
+    success: Boolean!
+    reference: String!
+    entriesPosted: Int!
+    postingDate: Date!
+}
+
+type CashFlowStatement {
+    date: Date!
+    operatingActivities: CashFlowSection!
+    investingActivities: CashFlowSection!
+    financingActivities: CashFlowSection!
+    netCashFlow: Decimal!
+}
+
+type CashFlowSection {
+    name: String!
+    items: [CashFlowItem!]!
+    total: Decimal!
+}
+
+type CashFlowItem {
+    description: String!
+    amount: Decimal!
+}
+
+type LoanProvisionReport {
+    date: Date!
+    classifications: [LoanClassification!]!
+    totalOutstanding: Decimal!
+    totalProvision: Decimal!
+}
+
+type LoanClassification {
+    classification: String!
+    count: Int!
+    outstandingAmount: Decimal!
+    provisionRate: Decimal!
+    provisionAmount: Decimal!
+}
+
+type MemberStatement {
+    member: Member!
+    account: SavingsAccount
+    transactions: [Transaction!]!
+    openingBalance: Decimal!
+    closingBalance: Decimal!
+    period: String!
+}
+
+type DailyTransactionSummary {
+    date: Date!
+    deposits: Decimal!
+    withdrawals: Decimal!
+    loanDisbursements: Decimal!
+    loanRepayments: Decimal!
+    totalCount: Int!
+}
+
+# Enums
+enum Gender {
+    MALE
+    FEMALE
+    OTHER
+}
+
+enum MaritalStatus {
+    SINGLE
+    MARRIED
+    DIVORCED
+    WIDOWED
+}
+
+enum MemberStatus {
+    ACTIVE
+    INACTIVE
+    SUSPENDED
+    DORMANT
+}
+
+enum MemberStage {
+    POTENTIAL
+    APPLICANT
+    APPROVED
+    ACTIVE
+    INACTIVE
+    SUSPENDED
+    DORMANT
+}
+
+enum AccountStatus {
+    ACTIVE
+    INACTIVE
+    DORMANT
+    CLOSED
+}
+
+enum LoanStatus {
+    APPLIED
+    APPROVED
+    DISBURSED
+    ACTIVE
+    CLOSED
+    WRITTEN_OFF
+    REJECTED
+}
+
+enum ProductStatus {
+    ACTIVE
+    INACTIVE
+}
+
+enum BranchStatus {
+    ACTIVE
+    INACTIVE
+}
+
+enum TransactionType {
+    DEPOSIT
+    WITHDRAWAL
+    LOAN_DISBURSEMENT
+    LOAN_REPAYMENT
+    TRANSFER
+    FEE
+    INTEREST
+}
+
+enum TransactionStatus {
+    PENDING
+    COMPLETED
+    REVERSED
+    FAILED
+}
+
+enum PaymentMethod {
+    CASH
+    CHEQUE
+    BANK_TRANSFER
+    MOBILE_MONEY
+    CARD
+    MPESA
+    TIGOPESA
+    YAS
+    NMB_BANK
+}
+
+enum SavingsProductType {
+    SAVINGS
+    FIXED_DEPOSIT
+    SHARES
+    CHECKING
+    CURRENT
+}
+
+enum InterestMethod {
+    FLAT
+    DECLINING_BALANCE
+    REDUCING_BALANCE
+}
+
+enum GuarantorStatus {
+    ACTIVE
+    RELEASED
+}
+
+enum CollateralStatus {
+    PLEDGED
+    ACTIVE
+    RELEASED
+    DISPOSED
+    VALUED
+    UNDER_EVALUATION
+    LIQUIDATED
+}
+
+enum ScheduleStatus {
+    PENDING
+    PARTIAL
+    PAID
+    OVERDUE
+    CANCELLED
+}
+
+enum AccountType {
+    ASSET
+    LIABILITY
+    EQUITY
+    INCOME
+    EXPENSE
+}
+
+enum UserRole {
+    ADMIN
+    MANAGER
+    CASHIER
+    LOAN_OFFICER
+    ACCOUNTANT
+    MEMBER
+}
+
+enum ApprovalStatus {
+    PENDING
+    APPROVED
+    REJECTED
+    EXPIRED
+}
+
+enum PaymentProvider {
+    MPESA
+    TIGOPESA
+    YAS
+    NMB_BANK
+    INTERNAL
+}
+
+enum PaymentDirection {
+    INBOUND
+    OUTBOUND
+}
+
+enum PaymentRequestStatus {
+    INITIATED
+    SENT
+    CALLBACK_RECEIVED
+    COMPLETED
+    FAILED
+    EXPIRED
+    CANCELLED
+    REVERSED
+}
+
+# Input Types
+input CreateMemberInput {
+    firstName: String!
+    middleName: String
+    lastName: String!
+    dateOfBirth: Date!
+    gender: Gender!
+    nationalId: String
+    phoneNumber: String
+    email: String
+    address: String
+    occupation: String
+    employer: String
+    monthlyIncome: Decimal
+    maritalStatus: MaritalStatus
+    nextOfKinName: String
+    nextOfKinPhone: String
+    nextOfKinRelationship: String
+    branchId: ID
+}
+
+input UpdateMemberInput {
+    firstName: String
+    middleName: String
+    lastName: String
+    phoneNumber: String
+    email: String
+    address: String
+    occupation: String
+    employer: String
+    monthlyIncome: Decimal
+    nextOfKinName: String
+    nextOfKinPhone: String
+    nextOfKinRelationship: String
+}
+
+input CreateSavingsAccountInput {
+    memberId: ID!
+    productId: ID!
+    branchId: ID
+    openingDeposit: Decimal!
+    beneficiaryName: String
+    beneficiaryRelationship: String
+}
+
+input DepositInput {
+    accountId: ID!
+    amount: Decimal!
+    paymentMethod: PaymentMethod!
+    referenceNumber: String
+    description: String
+}
+
+input WithdrawInput {
+    accountId: ID!
+    amount: Decimal!
+    paymentMethod: PaymentMethod!
+    description: String
+}
+
+input LoanApplicationInput {
+    memberId: ID!
+    productId: ID!
+    branchId: ID
+    requestedAmount: Decimal!
+    termMonths: Int!
+    purpose: String
+    loanOfficer: String
+}
+
+input LoanRepaymentInput {
+    loanId: ID!
+    amount: Decimal!
+    paymentMethod: PaymentMethod!
+    referenceNumber: String
+}
+
+input AddGuarantorInput {
+    loanId: ID!
+    guarantorMemberId: ID
+    guarantorName: String!
+    guarantorNationalId: String
+    guarantorPhone: String
+    guaranteedAmount: Decimal!
+    relationship: String
+}
+
+input AddCollateralInput {
+    loanId: ID!
+    collateralType: String!
+    description: String
+    estimatedValue: Decimal!
+    registrationNumber: String
+    location: String
+}
+
+input CreateSavingsProductInput {
+    productCode: String!
+    productName: String!
+    productType: SavingsProductType!
+    description: String
+    interestRate: Decimal!
+    interestCalculationMethod: String!
+    interestPaymentFrequency: String!
+    minimumBalance: Decimal!
+    maximumBalance: Decimal
+    minimumOpeningBalance: Decimal!
+    withdrawalLimit: Int
+    withdrawalFee: Decimal
+    monthlyFee: Decimal
+    taxWithholdingRate: Decimal
+    dormancyPeriodDays: Int
+    allowsOverdraft: Boolean
+}
+
+input UpdateSavingsProductInput {
+    productCode: String!
+    productName: String!
+    productType: SavingsProductType!
+    description: String
+    interestRate: Decimal!
+    interestCalculationMethod: String!
+    interestPaymentFrequency: String!
+    minimumBalance: Decimal!
+    maximumBalance: Decimal
+    minimumOpeningBalance: Decimal!
+    withdrawalLimit: Int
+    withdrawalFee: Decimal
+    monthlyFee: Decimal
+    taxWithholdingRate: Decimal
+    dormancyPeriodDays: Int
+    allowsOverdraft: Boolean
+}
+
+
+input CreateLoanProductInput {
+    productCode: String!
+    productName: String!
+    description: String
+    interestRate: Decimal!
+    interestMethod: InterestMethod!
+    repaymentFrequency: String!
+    minimumAmount: Decimal!
+    maximumAmount: Decimal!
+    minimumTermMonths: Int!
+    maximumTermMonths: Int!
+    processingFeeRate: Decimal
+    processingFeeFixed: Decimal
+    insuranceFeeRate: Decimal
+    latePaymentPenaltyRate: Decimal
+    gracePeriodDays: Int
+    requiresGuarantors: Boolean
+    minimumGuarantors: Int
+    requiresCollateral: Boolean
+    collateralPercentage: Decimal
+}
+
+input CreateBranchInput {
+    branchCode: String!
+    branchName: String!
+    address: String
+    phoneNumber: String
+    email: String
+    managerName: String
+    openingDate: Date!
+}
+
+input UpdateBranchInput {
+    branchName: String
+    address: String
+    phoneNumber: String
+    email: String
+    managerName: String
+    status: BranchStatus
+}
+
+input CreateUserInput {
+    firstName: String!
+    middleName: String
+    lastName: String!
+    phoneNumber: String
+    email: String!
+    role: UserRole!
+    branchId: ID
+    password: String!
+    confirmPassword: String!
+}
+input UpdateUserInput {
+    firstName: String
+    middleName: String
+    lastName: String
+    phoneNumber: String
+    email: String
+    role: UserRole
+    branchId: ID
+    isActive: Boolean
+}
+input UpdateLoanProductInput {
+    productCode: String!
+    productName: String!
+    description: String
+    interestRate: Decimal!
+    interestMethod: InterestMethod!
+    repaymentFrequency: String!
+    minimumAmount: Decimal!
+    maximumAmount: Decimal!
+    minimumTermMonths: Int!
+    maximumTermMonths: Int!
+    processingFeeRate: Decimal
+    processingFeeFixed: Decimal
+    insuranceFeeRate: Decimal
+    latePaymentPenaltyRate: Decimal
+    gracePeriodDays: Int
+    requiresGuarantors: Boolean
+    minimumGuarantors: Int
+    requiresCollateral: Boolean
+    collateralPercentage: Decimal
+}
+
+# New Input Types for SACCOS Compliance
+input JournalEntryInput {
+    postingDate: Date
+    description: String!
+    reference: String
+    branchId: ID
+    lines: [JournalEntryLineInput!]!
+}
+
+input JournalEntryLineInput {
+    accountId: ID!
+    debitAmount: Decimal
+    creditAmount: Decimal
+}
+
+# Dashboard Stats
+type DashboardStats {
+    totalMembers: Int!
+    totalSavings: Decimal!
+    activeLoans: Int!
+    loanPortfolio: Decimal!
+    overdueLoans: Int!
+    pendingApplications: Int!
+    recentTransactions: [RecentTransaction!]!
+}
+
+type RecentTransaction {
+    id: ID!
+    memberName: String!
+    transactionType: String!
+    amount: Decimal!
+    date: String!
+    status: String!
+}
+
+# Payment Types
+type PaymentRequest {
+    id: ID!
+    requestNumber: String!
+    provider: PaymentProvider!
+    direction: PaymentDirection!
+    status: PaymentRequestStatus!
+    amount: Decimal!
+    currency: String!
+    phoneNumber: String
+    bankAccountNumber: String
+    member: Member
+    savingsAccount: SavingsAccount
+    loanAccount: LoanAccount
+    purpose: String
+    providerReference: String
+    providerConversationId: String
+    providerResponseCode: String
+    providerResponseMessage: String
+    failureReason: String
+    retryCount: Int
+    initiatedBy: String
+    initiatedAt: DateTime!
+    sentAt: DateTime
+    callbackAt: DateTime
+    completedAt: DateTime
+    expiresAt: DateTime
+}
+
+type PaymentRequestPage {
+    content: [PaymentRequest!]!
+    totalElements: Int!
+    totalPages: Int!
+}
+
+type PaymentDashboard {
+    totalPaymentsToday: Int!
+    completedPayments: Int!
+    failedPayments: Int!
+    pendingPayments: Int!
+    totalAmountToday: Decimal!
+    totalCollections: Decimal!
+    totalDisbursements: Decimal!
+    mpesaCount: Int!
+    tigopesaCount: Int!
+    nmbCount: Int!
+}
+
+# ESS Types
+type Employer {
+    id: ID!
+    employerCode: String!
+    employerName: String!
+    contactPerson: String
+    phoneNumber: String
+    email: String
+    address: String
+    tinNumber: String
+    payrollCutoffDay: Int
+    isActive: Boolean!
+    createdAt: DateTime
+    updatedAt: DateTime
+}
+
+type PayrollDeduction {
+    id: ID!
+    member: Member!
+    employer: Employer!
+    deductionType: String!
+    savingsAccount: SavingsAccount
+    loanAccount: LoanAccount
+    amount: Decimal!
+    isActive: Boolean!
+    startDate: DateTime
+    endDate: DateTime
+    description: String
+    createdAt: DateTime
+}
+
+type PayrollDeductionBatch {
+    id: ID!
+    batchNumber: String!
+    employer: Employer!
+    period: String!
+    totalDeductions: Int!
+    successfulDeductions: Int!
+    failedDeductions: Int!
+    totalAmount: Decimal!
+    status: String!
+    processedBy: String
+    processedAt: DateTime
+    notes: String
+    createdAt: DateTime
+}
+
+type EssServiceRequest {
+    id: ID!
+    requestNumber: String!
+    member: Member!
+    requestType: String!
+    status: String!
+    amount: Decimal
+    description: String
+    reviewNotes: String
+    reviewedAt: DateTime
+    createdAt: DateTime
+    updatedAt: DateTime
+}
+
+type EssDashboard {
+    memberName: String!
+    memberNumber: String!
+    employerName: String
+    totalSavings: Decimal!
+    totalLoanOutstanding: Decimal!
+    activeLoans: Int!
+    activeSavingsAccounts: Int!
+    monthlyDeductions: Decimal!
+    recentRequests: [EssServiceRequest!]!
+}
+
+# Credit Scoring Types
+type CreditScoreResult {
+    id: ID!
+    member: Member!
+    score: Int!
+    rating: String!
+    factors: String
+    calculatedAt: DateTime
+}
+
+type DividendRun {
+    id: ID!
+    year: Int!
+    method: String!
+    rate: Decimal
+    totalAmount: Decimal
+    membersPaid: Int
+    status: String!
+    processedBy: String
+    processedAt: DateTime
+    createdAt: DateTime
+}
+
+# Transaction Approval Type
+type TransactionApproval {
+    id: ID!
+    transactionType: String!
+    entityId: ID
+    amount: Decimal
+    requestData: String
+    requestedBy: String
+    requestedAt: DateTime
+    approvedBy: String
+    approvedAt: DateTime
+    rejectedBy: String
+    rejectedAt: DateTime
+    rejectionReason: String
+    status: ApprovalStatus!
+    createdAt: DateTime
+    updatedAt: DateTime
+}
+
+# Payment Input Types
+input MobileDepositInput {
+    accountId: ID!
+    amount: Decimal!
+    provider: PaymentProvider!
+    phoneNumber: String!
+    description: String
+}
+
+input MobileLoanRepaymentInput {
+    loanId: ID!
+    amount: Decimal!
+    provider: PaymentProvider!
+    phoneNumber: String!
+}
+
+input MobileDisbursementInput {
+    loanId: ID!
+    amount: Decimal!
+    provider: PaymentProvider!
+    phoneNumber: String
+    bankAccountNumber: String
+}
