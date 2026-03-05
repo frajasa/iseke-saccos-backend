@@ -21,8 +21,6 @@ import tz.co.iseke.repository.PaymentRequestRepository;
 import tz.co.iseke.repository.SavingsAccountRepository;
 import tz.co.iseke.repository.LoanAccountRepository;
 import tz.co.iseke.service.TransactionService;
-import tz.co.iseke.inputs.DepositInput;
-import tz.co.iseke.inputs.LoanRepaymentInput;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -41,6 +39,7 @@ public class PaymentOrchestrationService {
     private final SavingsAccountRepository savingsAccountRepository;
     private final LoanAccountRepository loanAccountRepository;
     private final TransactionService transactionService;
+    private final PaymentCompletionService paymentCompletionService;
 
     @Transactional
     public PaymentRequest initiateMobileDeposit(MobileDepositInput input, String initiatedBy) {
@@ -167,51 +166,34 @@ public class PaymentOrchestrationService {
         request.setCallbackAt(LocalDateTime.now());
         request.setCallbackPayload(payload);
 
+        // Process callback if status is CALLBACK_RECEIVED (normal flow)
+        // Also recover EXPIRED payments if a valid callback arrives
         if (request.getStatus() == PaymentRequestStatus.CALLBACK_RECEIVED) {
-            try {
-                completePayment(request);
-                request.setStatus(PaymentRequestStatus.COMPLETED);
-                request.setCompletedAt(LocalDateTime.now());
-            } catch (Exception e) {
-                log.error("Failed to complete payment {}: {}", request.getRequestNumber(), e.getMessage());
-                request.setStatus(PaymentRequestStatus.FAILED);
-                request.setFailureReason("Post-processing failed: " + e.getMessage());
-            }
+            attemptCompletion(request);
         }
 
         return paymentRequestRepository.save(request);
     }
 
-    private void completePayment(PaymentRequest request) {
-        if (request.getDirection() == PaymentDirection.INBOUND) {
-            if ("DEPOSIT".equals(request.getPurpose()) && request.getSavingsAccount() != null) {
-                DepositInput depositInput = new DepositInput();
-                depositInput.setAccountId(request.getSavingsAccount().getId());
-                depositInput.setAmount(request.getAmount());
-                depositInput.setPaymentMethod(mapProviderToPaymentMethod(request.getProvider()));
-                depositInput.setReferenceNumber(request.getProviderReference());
-                depositInput.setDescription("Mobile deposit via " + request.getProvider());
-                transactionService.processDeposit(depositInput);
-            } else if ("LOAN_REPAYMENT".equals(request.getPurpose()) && request.getLoanAccount() != null) {
-                LoanRepaymentInput repaymentInput = new LoanRepaymentInput();
-                repaymentInput.setLoanId(request.getLoanAccount().getId());
-                repaymentInput.setAmount(request.getAmount());
-                repaymentInput.setPaymentMethod(mapProviderToPaymentMethod(request.getProvider()));
-                repaymentInput.setReferenceNumber(request.getProviderReference());
-                Transaction txn = transactionService.processLoanRepayment(repaymentInput);
+    /**
+     * Attempt to complete the payment using an isolated transaction.
+     * If the financial transaction fails (e.g., business rule violation),
+     * the REQUIRES_NEW transaction in PaymentCompletionService rolls back independently,
+     * and we can still save the payment status as FAILED without losing the callback data.
+     */
+    private void attemptCompletion(PaymentRequest request) {
+        try {
+            Transaction txn = paymentCompletionService.completePayment(request);
+            if (txn != null) {
                 request.setTransaction(txn);
             }
+            request.setStatus(PaymentRequestStatus.COMPLETED);
+            request.setCompletedAt(LocalDateTime.now());
+        } catch (Exception e) {
+            log.error("Failed to complete payment {}: {}", request.getRequestNumber(), e.getMessage());
+            request.setStatus(PaymentRequestStatus.FAILED);
+            request.setFailureReason("Post-processing failed: " + e.getMessage());
         }
-        // OUTBOUND disbursements are handled during loan disbursement flow
-    }
-
-    private PaymentMethod mapProviderToPaymentMethod(PaymentProvider provider) {
-        return switch (provider) {
-            case MPESA -> PaymentMethod.MPESA;
-            case TIGOPESA -> PaymentMethod.TIGOPESA;
-            case NMB_BANK -> PaymentMethod.NMB_BANK;
-            default -> PaymentMethod.MOBILE_MONEY;
-        };
     }
 
     @Transactional
@@ -291,14 +273,48 @@ public class PaymentOrchestrationService {
                 .findByStatusAndExpiresAtBefore(PaymentRequestStatus.SENT, LocalDateTime.now());
 
         for (PaymentRequest request : staleRequests) {
-            log.info("Expiring stale payment request: {}", request.getRequestNumber());
-            request.setStatus(PaymentRequestStatus.EXPIRED);
-            request.setFailureReason("Request expired without callback");
+            // If a callback was already received but completion failed (transaction rollback),
+            // attempt to complete again instead of expiring
+            if (request.getCallbackAt() != null) {
+                log.info("Retrying completion for payment {} that received callback but wasn't completed",
+                        request.getRequestNumber());
+                attemptCompletion(request);
+            } else {
+                log.info("Expiring stale payment request: {}", request.getRequestNumber());
+                request.setStatus(PaymentRequestStatus.EXPIRED);
+                request.setFailureReason("Request expired without callback");
+            }
             paymentRequestRepository.save(request);
         }
 
         if (!staleRequests.isEmpty()) {
-            log.info("Expired {} stale payment requests", staleRequests.size());
+            log.info("Processed {} stale payment requests", staleRequests.size());
         }
+    }
+
+    /**
+     * Retry expired payments that had valid callbacks but failed completion.
+     * Can be called manually by admin.
+     */
+    @Transactional
+    public int retryExpiredPayments() {
+        List<PaymentRequest> expiredRequests = paymentRequestRepository
+                .findByStatus(PaymentRequestStatus.EXPIRED, PageRequest.of(0, 100))
+                .getContent();
+
+        int recovered = 0;
+        for (PaymentRequest request : expiredRequests) {
+            if (request.getCallbackAt() != null) {
+                log.info("Recovering expired payment: {}", request.getRequestNumber());
+                attemptCompletion(request);
+                paymentRequestRepository.save(request);
+                if (request.getStatus() == PaymentRequestStatus.COMPLETED) {
+                    recovered++;
+                }
+            }
+        }
+
+        log.info("Recovered {} out of {} expired payment requests", recovered, expiredRequests.size());
+        return recovered;
     }
 }

@@ -27,6 +27,7 @@ type Query {
     loanAccount(id: ID!): LoanAccount
     loanAccountByNumber(loanNumber: String!): LoanAccount
     memberLoanAccounts(memberId: ID!): [LoanAccount!]!
+    loanProduct(id: ID!): LoanProduct
     loanProducts: [LoanProduct!]!
     loanRepaymentSchedule(loanId: ID!, page: Int, size: Int): RepaymentSchedulePage!
 
@@ -160,6 +161,7 @@ type Mutation {
     initiateMobileDisbursement(input: MobileDisbursementInput!): PaymentRequest!
     checkPaymentStatus(paymentRequestId: ID!): PaymentRequest!
     cancelPaymentRequest(paymentRequestId: ID!): PaymentRequest!
+    retryExpiredPayments: Int!
 
     # Credit Scoring & Dividends
     calculateCreditScore(memberId: ID!): CreditScoreResult!

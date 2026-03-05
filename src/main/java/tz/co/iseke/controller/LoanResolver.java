@@ -57,6 +57,11 @@ public class LoanResolver {
     }
 
     @QueryMapping
+    public LoanProduct loanProduct(@Argument UUID id) {
+        return loanProductService.findById(id);
+    }
+
+    @QueryMapping
     public List<LoanProduct> loanProducts() {
         return loanProductService.findAllActive();
     }

@@ -103,4 +103,10 @@ public class PaymentResolver {
     public PaymentRequest cancelPaymentRequest(@Argument UUID paymentRequestId) {
         return paymentOrchestrationService.cancelPaymentRequest(paymentRequestId);
     }
+
+    @MutationMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public int retryExpiredPayments() {
+        return paymentOrchestrationService.retryExpiredPayments();
+    }
 }
