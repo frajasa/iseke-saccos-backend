@@ -11,7 +11,6 @@ import tz.co.iseke.entity.PaymentRequest;
 import tz.co.iseke.enums.PaymentProvider;
 import tz.co.iseke.enums.PaymentRequestStatus;
 import tz.co.iseke.repository.PaymentRequestRepository;
-import tz.co.iseke.service.payment.MockPaymentCallbackSimulator;
 import tz.co.iseke.service.payment.PaymentGateway;
 
 import java.util.Map;
@@ -25,7 +24,6 @@ public class TigopesaGateway implements PaymentGateway {
     private final TigopesaProperties tigopesaProperties;
     private final PaymentRequestRepository paymentRequestRepository;
     private final ObjectMapper objectMapper;
-    private final MockPaymentCallbackSimulator callbackSimulator;
 
     private static final MediaType JSON_MEDIA = MediaType.parse("application/json; charset=utf-8");
     private static final MediaType FORM_MEDIA = MediaType.parse("application/x-www-form-urlencoded");
@@ -190,7 +188,12 @@ public class TigopesaGateway implements PaymentGateway {
 
     @Override
     public boolean isAvailable() {
-        return tigopesaProperties.isEnabled() || true; // Available in mock mode
+        return true; // Always available (real or mock mode)
+    }
+
+    @Override
+    public boolean isMockMode() {
+        return !tigopesaProperties.isEnabled();
     }
 
     // --- Mock methods ---
@@ -200,7 +203,6 @@ public class TigopesaGateway implements PaymentGateway {
         request.setProviderReference("TIGO-MOCK-" + System.currentTimeMillis());
         request.setProviderResponseCode("success");
         request.setStatus(PaymentRequestStatus.SENT);
-        callbackSimulator.simulateSuccessCallback(request, PaymentProvider.TIGOPESA);
         return request;
     }
 
@@ -209,7 +211,6 @@ public class TigopesaGateway implements PaymentGateway {
         request.setProviderReference("TIGO-MOCK-" + System.currentTimeMillis());
         request.setProviderResponseCode("success");
         request.setStatus(PaymentRequestStatus.SENT);
-        callbackSimulator.simulateSuccessCallback(request, PaymentProvider.TIGOPESA);
         return request;
     }
 

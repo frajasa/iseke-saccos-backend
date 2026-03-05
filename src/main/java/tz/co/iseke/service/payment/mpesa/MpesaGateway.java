@@ -11,7 +11,6 @@ import tz.co.iseke.entity.PaymentRequest;
 import tz.co.iseke.enums.PaymentProvider;
 import tz.co.iseke.enums.PaymentRequestStatus;
 import tz.co.iseke.repository.PaymentRequestRepository;
-import tz.co.iseke.service.payment.MockPaymentCallbackSimulator;
 import tz.co.iseke.service.payment.PaymentGateway;
 
 import java.util.concurrent.TimeUnit;
@@ -24,7 +23,6 @@ public class MpesaGateway implements PaymentGateway {
     private final MpesaProperties mpesaProperties;
     private final PaymentRequestRepository paymentRequestRepository;
     private final ObjectMapper objectMapper;
-    private final MockPaymentCallbackSimulator callbackSimulator;
 
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
@@ -166,7 +164,12 @@ public class MpesaGateway implements PaymentGateway {
 
     @Override
     public boolean isAvailable() {
-        return mpesaProperties.isEnabled() || true; // Always available in mock mode
+        return true; // Always available (real or mock mode)
+    }
+
+    @Override
+    public boolean isMockMode() {
+        return !mpesaProperties.isEnabled();
     }
 
     // --- Mock/simulation methods for development ---
@@ -179,8 +182,6 @@ public class MpesaGateway implements PaymentGateway {
         request.setProviderResponseMessage("Mock: Request accepted successfully");
         request.setStatus(PaymentRequestStatus.SENT);
 
-        // Simulate async callback (in real implementation, M-Pesa sends this)
-        simulateCallbackAsync(request);
         return request;
     }
 
@@ -192,12 +193,7 @@ public class MpesaGateway implements PaymentGateway {
         request.setProviderResponseMessage("Mock: Disbursement initiated");
         request.setStatus(PaymentRequestStatus.SENT);
 
-        simulateCallbackAsync(request);
         return request;
-    }
-
-    private void simulateCallbackAsync(PaymentRequest request) {
-        callbackSimulator.simulateSuccessCallback(request, PaymentProvider.MPESA);
     }
 
     // --- Helper methods ---

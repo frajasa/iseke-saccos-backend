@@ -83,7 +83,7 @@ public class PaymentRequest {
     @JoinColumn(name = "transaction_id")
     private Transaction transaction;
 
-    @Column(name = "failure_reason", length = 500)
+    @Column(name = "failure_reason", length = 2000)
     private String failureReason;
 
     @Column(name = "retry_count")

@@ -75,7 +75,14 @@ public class PaymentOrchestrationService {
             request.setFailureReason(e.getMessage());
         }
 
-        return paymentRequestRepository.save(request);
+        request = paymentRequestRepository.save(request);
+
+        // In mock mode, complete the payment synchronously
+        if (gateway.isMockMode() && request.getStatus() == PaymentRequestStatus.SENT) {
+            completeMockPayment(request);
+        }
+
+        return request;
     }
 
     @Transactional
@@ -112,7 +119,14 @@ public class PaymentOrchestrationService {
             request.setFailureReason(e.getMessage());
         }
 
-        return paymentRequestRepository.save(request);
+        request = paymentRequestRepository.save(request);
+
+        // In mock mode, complete the payment synchronously
+        if (gateway.isMockMode() && request.getStatus() == PaymentRequestStatus.SENT) {
+            completeMockPayment(request);
+        }
+
+        return request;
     }
 
     @Transactional
@@ -150,7 +164,14 @@ public class PaymentOrchestrationService {
             request.setFailureReason(e.getMessage());
         }
 
-        return paymentRequestRepository.save(request);
+        request = paymentRequestRepository.save(request);
+
+        // In mock mode, complete the payment synchronously
+        if (gateway.isMockMode() && request.getStatus() == PaymentRequestStatus.SENT) {
+            completeMockPayment(request);
+        }
+
+        return request;
     }
 
     @Transactional
@@ -181,9 +202,32 @@ public class PaymentOrchestrationService {
      * the REQUIRES_NEW transaction in PaymentCompletionService rolls back independently,
      * and we can still save the payment status as FAILED without losing the callback data.
      */
+    /**
+     * In mock mode, simulate the full callback flow synchronously.
+     * The payment is already saved as SENT, so we directly attempt completion.
+     */
+    private void completeMockPayment(PaymentRequest request) {
+        log.info("MOCK: Completing payment {} synchronously", request.getRequestNumber());
+        request.setCallbackAt(LocalDateTime.now());
+        request.setStatus(PaymentRequestStatus.CALLBACK_RECEIVED);
+        attemptCompletion(request);
+        paymentRequestRepository.save(request);
+    }
+
     private void attemptCompletion(PaymentRequest request) {
         try {
-            Transaction txn = paymentCompletionService.completePayment(request);
+            // Extract IDs within current transaction to avoid lazy-loading issues
+            // across the REQUIRES_NEW transaction boundary
+            UUID savingsAccountId = request.getSavingsAccount() != null
+                    ? request.getSavingsAccount().getId() : null;
+            UUID loanAccountId = request.getLoanAccount() != null
+                    ? request.getLoanAccount().getId() : null;
+
+            Transaction txn = paymentCompletionService.completePayment(
+                    request.getDirection(), request.getPurpose(),
+                    savingsAccountId, loanAccountId,
+                    request.getAmount(), request.getProvider(),
+                    request.getProviderReference());
             if (txn != null) {
                 request.setTransaction(txn);
             }

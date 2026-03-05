@@ -19,6 +19,10 @@ public interface PaymentGateway {
 
     boolean isAvailable();
 
+    default boolean isMockMode() {
+        return false;
+    }
+
     default Map<String, Object> getProviderInfo() {
         return Map.of(
                 "provider", getProvider().name(),

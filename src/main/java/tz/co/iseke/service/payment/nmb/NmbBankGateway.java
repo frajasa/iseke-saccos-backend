@@ -11,7 +11,6 @@ import tz.co.iseke.entity.PaymentRequest;
 import tz.co.iseke.enums.PaymentProvider;
 import tz.co.iseke.enums.PaymentRequestStatus;
 import tz.co.iseke.repository.PaymentRequestRepository;
-import tz.co.iseke.service.payment.MockPaymentCallbackSimulator;
 import tz.co.iseke.service.payment.PaymentGateway;
 
 import java.util.concurrent.TimeUnit;
@@ -24,7 +23,6 @@ public class NmbBankGateway implements PaymentGateway {
     private final NmbBankProperties nmbProperties;
     private final PaymentRequestRepository paymentRequestRepository;
     private final ObjectMapper objectMapper;
-    private final MockPaymentCallbackSimulator callbackSimulator;
 
     private static final MediaType JSON_MEDIA = MediaType.parse("application/json; charset=utf-8");
 
@@ -158,7 +156,12 @@ public class NmbBankGateway implements PaymentGateway {
 
     @Override
     public boolean isAvailable() {
-        return nmbProperties.isEnabled() || true; // Available in mock mode
+        return true; // Always available (real or mock mode)
+    }
+
+    @Override
+    public boolean isMockMode() {
+        return !nmbProperties.isEnabled();
     }
 
     // --- Mock methods ---
@@ -169,7 +172,6 @@ public class NmbBankGateway implements PaymentGateway {
         request.setProviderReference("NMB-MOCK-" + System.currentTimeMillis());
         request.setProviderResponseCode("ACCEPTED");
         request.setStatus(PaymentRequestStatus.SENT);
-        callbackSimulator.simulateSuccessCallback(request, PaymentProvider.NMB_BANK);
         return request;
     }
 
@@ -179,7 +181,6 @@ public class NmbBankGateway implements PaymentGateway {
         request.setProviderReference("NMB-MOCK-" + System.currentTimeMillis());
         request.setProviderResponseCode("ACCEPTED");
         request.setStatus(PaymentRequestStatus.SENT);
-        callbackSimulator.simulateSuccessCallback(request, PaymentProvider.NMB_BANK);
         return request;
     }
 

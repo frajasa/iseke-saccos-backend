@@ -9,9 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import tz.co.iseke.entity.PaymentRequest;
 import tz.co.iseke.enums.PaymentProvider;
-import tz.co.iseke.testutil.TestDataBuilder;
 
 import java.math.BigDecimal;
 
@@ -29,18 +27,23 @@ class MockPaymentCallbackSimulatorTest {
     @InjectMocks
     private MockPaymentCallbackSimulator simulator;
 
-    private PaymentRequest request;
+    private String providerConversationId;
+    private String providerReference;
+    private String requestNumber;
+    private BigDecimal amount;
 
     @BeforeEach
     void setUp() {
-        request = TestDataBuilder.aPaymentRequest(PaymentProvider.MPESA, new BigDecimal("100000"));
-        request.setProviderConversationId("MOCK-CONV-12345");
-        request.setProviderReference("MOCK-REF-12345");
+        providerConversationId = "MOCK-CONV-12345";
+        providerReference = "MOCK-REF-12345";
+        requestNumber = "PAY123456";
+        amount = new BigDecimal("100000");
     }
 
     @Test
     void mpesaPayload_containsCorrectFields() throws Exception {
-        String payload = simulator.buildCallbackPayload(request, PaymentProvider.MPESA);
+        String payload = simulator.buildCallbackPayload(providerConversationId, providerReference,
+                requestNumber, amount, PaymentProvider.MPESA);
         JsonNode json = objectMapper.readTree(payload);
 
         assertEquals("MOCK-CONV-12345", json.path("output_ConversationID").asText());
@@ -51,8 +54,8 @@ class MockPaymentCallbackSimulatorTest {
 
     @Test
     void tigopesaPayload_containsCorrectFields() throws Exception {
-        request.setProvider(PaymentProvider.TIGOPESA);
-        String payload = simulator.buildCallbackPayload(request, PaymentProvider.TIGOPESA);
+        String payload = simulator.buildCallbackPayload(providerConversationId, providerReference,
+                requestNumber, amount, PaymentProvider.TIGOPESA);
         JsonNode json = objectMapper.readTree(payload);
 
         assertEquals("MOCK-REF-12345", json.path("transaction_ref_id").asText());
@@ -63,8 +66,8 @@ class MockPaymentCallbackSimulatorTest {
 
     @Test
     void nmbPayload_containsCorrectFields() throws Exception {
-        request.setProvider(PaymentProvider.NMB_BANK);
-        String payload = simulator.buildCallbackPayload(request, PaymentProvider.NMB_BANK);
+        String payload = simulator.buildCallbackPayload(providerConversationId, providerReference,
+                requestNumber, amount, PaymentProvider.NMB_BANK);
         JsonNode json = objectMapper.readTree(payload);
 
         assertEquals("MOCK-REF-12345", json.path("transactionReference").asText());
