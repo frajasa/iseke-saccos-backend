@@ -39,11 +39,6 @@ public class TransactionResolver {
         return transactionService.findAccountTransactions(accountId, startDate, endDate);
     }
 
-    @QueryMapping
-    public List<Transaction> loanTransactions(@Argument UUID loanId) {
-        return transactionService.findLoanTransactions(loanId);
-    }
-
     @MutationMapping
     public Transaction deposit(@Argument DepositInput input) {
         return transactionService.processDeposit(input);
